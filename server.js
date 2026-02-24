@@ -335,7 +335,42 @@ app.post('/api/users/login', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Multi-Channel Text Engine
+app.post('/api/ai/multi-channel', async (req, res) => {
+try {
+const { rawInput, targetProfit } = req.body;
 
+const systemPrompt = `You are an expert multi-channel e-commerce and local resale optimizer. Your job is to take raw, messy product inputs and instantly generate optimized listings for Facebook Marketplace, eBay, and OfferUp, while protecting the seller's absolute bottom-line profit.
+
+When the user provides a raw description and a "Target Take-Home" amount, you must output a JSON object exactly like this:
+{
+  "facebook": "listing text here...",
+  "facebookPrice": "...",
+  "ebay": "listing text here...",
+  "ebayPrice": "...",
+  "offerup": "listing text here...",
+  "offerupPrice": "...",
+  "walkAway": "..."
+}
+
+RULES:
+1. FACEBOOK: Punchy, local-SEO keywords. Boundaries: "Must pick up. First come, first served. No holds without deposit." Price = Target Take-Home + 10%.
+2. EBAY: Highly structured, bullet points. Price = Target Take-Home + 15% (fees) + Estimated Shipping Buffer.
+3. OFFERUP/CRAIGSLIST: Casual, designed for haggling. Price = Target Take-Home + 25%.
+4. WALK-AWAY: The absolute lowest dollar amount they can accept in a cash deal.`;
+
+const response = await openai.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: `Target Take-Home: $${targetProfit}\nRaw Details: ${rawInput}` }
+  ],
+  response_format: { type: "json_object" },
+  max_tokens: 1000
+});
+
+res.json(JSON.parse(response.choices[0].message.content));
+} catch (error) { console.error('Engine Error:', error); res.status(500).json({ error: error.message }); } });
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
   console.log(`📊 Health check: http://localhost:${port}/api/health`);
